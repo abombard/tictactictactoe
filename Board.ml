@@ -14,15 +14,25 @@ struct
 
     let play t i c =
         match t with
-        | Owner ( o ) -> failwith "Error: This game is over"
+        | Owner ( o ) -> print_endline "Error: This board game is over"; t
         | Board ( l ) ->
             let rec aux l nl j =
                 match l with
                 | [] -> Board ( nl )
-                | e :: tail when i = j -> aux tail (nl @ [c]) (j+1)
+                | e :: tail when i = j ->
+                        if e <> '_' then print_endline "Error: This cell is already taken";
+                        aux tail (nl @ [c]) (j+1)
                 | e :: tail -> aux tail (nl @ [e]) (j+1)
             in aux l [] 0
 
-end
+    let isOver t =
+        match t with
+        | Owner ( _ ) -> true
+        | Board ( _ ) -> false
 
+
+    let getWinner t =
+        match t with
+        | Owner ( c ) -> 
+end
 
