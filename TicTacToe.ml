@@ -12,6 +12,7 @@ struct
     let newTicTacToe () = (create_list (Board.newBoard ()) 9, 'O')
 
     let nextPlayer c = if c = 'O' then 'X' else 'O'
+
     let play (boards, c) x y =
         let rec aux l nl i =
             match l with
