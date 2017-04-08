@@ -4,47 +4,33 @@ let create_list elem size =
         else aux (i+1) (elem :: nl)
     in aux 0 []
 
-module Board =
+module type Board =
 struct
 
-    type owner = O | X | None
-
-    let string_of_owner o =
-        match o with
-        | O -> "O"
-        | X -> "X"
-        | None -> failwith "Invalid Owner"
-
-    type t = Owner of owner
-           | Board of owner list
+    type t = Winner of Player.t
+           | Board of (Some player) list
 
     let newBoard () = Board ( create_list None 9 )
 
     let play t i c =
         match t with
-        | Owner ( _ ) -> print_endline "Error: This board game is over"; t
+        | Winner ( _ ) -> print_endline "Error: This board game is over"; t
         | Board ( l ) ->
             let rec aux l nl j =
                 match l with
                 | [] -> Board ( nl )
                 | e :: tail when i = j ->
-                        if e <> None then print_endline "Error: This cell is already taken";
                         aux tail (nl @ [c]) (j+1)
                 | e :: tail -> aux tail (nl @ [e]) (j+1)
             in aux l [] 0
 
-    let isOver t =
-        match t with
-        | Owner ( _ ) -> true
-        | Board ( _ ) -> false
-
     let toString t =
         match t with
-        | Owner ( o ) -> begin
-               match o with
-               | O -> "/ - \\ |   | \\ - /"
-               | X -> "\\   /   X   /   \\"
-               | None -> failwith "Owner is None"
+        | Winner ( opt ) -> begin
+               match opt with
+               | Some ( player ) with player = Player.O -> "/ - \\ |   | \\ - /"
+               | Some ( player ) with player = Player.X -> "\\   /   X   /   \\"
+               | None -> failwith "Board Winner is None"
         end
         | Board ( l ) ->
                 let rec aux l s =
