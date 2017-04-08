@@ -1,3 +1,9 @@
+let () =
+    let t = TicTacToe.newTicTacToe () in
+    let t = TicTacToe.play t 3 3 in
+    print_endline "bla"
+
+(*
 module Tic :
 struct
 	type t = (int * char) list
@@ -69,3 +75,4 @@ let printRes t =
 	print_newline (Tic.getFirstLine (nth t 3) ^ "|" ^ Tic.getFirstLine (nth t 4) ^ "|" ^ Tic.getFirstLine (nth t 5) ^ "|");
 	print_newline ("-----------");
 	print_newline (Tic.getFirstLine (nth t 6) ^ "|" ^ Tic.getFirstLine (nth t 7) ^ "|" ^ Tic.getFirstLine (nth t 8) ^ "|");
+*)
