@@ -4,13 +4,13 @@ let create_list elem size =
         else aux (i+1) (elem :: nl)
     in aux 0 []
 
-module type Board =
+module Board =
 struct
 
     type t = Winner of Player.t
-           | Board of (Some player) list
+           | Board of Player.t list
 
-    let newBoard () = Board ( create_list None 9 )
+    let newBoard () = Board ( create_list Player.None 9 )
 
     let play t i c =
         match t with
@@ -20,23 +20,29 @@ struct
                 match l with
                 | [] -> Board ( nl )
                 | e :: tail when i = j ->
-                        aux tail (nl @ [c]) (j+1)
+                        if e <> Player.None
+                        then begin
+                            print_endline "Error: Cell already taken";
+                            aux tail (nl @ [e]) (j+1)
+                        end
+                        else aux tail (nl @ [c]) (j+1)
                 | e :: tail -> aux tail (nl @ [e]) (j+1)
             in aux l [] 0
 
     let toString t =
         match t with
-        | Winner ( opt ) -> begin
-               match opt with
-               | Some ( player ) with player = Player.O -> "/ - \\ |   | \\ - /"
-               | Some ( player ) with player = Player.X -> "\\   /   X   /   \\"
-               | None -> failwith "Board Winner is None"
+        | Winner ( player ) -> begin
+               match player with
+               | Player.O -> "/ - \\ |   | \\ - /"
+               | Player.X -> "\\   /   X   /   \\"
+               | Player.None -> "None"
         end
         | Board ( l ) ->
                 let rec aux l s =
                     match l with
                     | [] -> s
-                    | o :: tail -> aux tail (s ^ string_of_owner o)
+                    | player :: [] -> s ^ Player.toString player
+                    | player :: tail -> aux tail (s ^ Player.toString player ^ " ")
                 in aux l ""
 
 end

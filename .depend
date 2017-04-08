@@ -1,6 +1,0 @@
-Board.cmo : Board.cmi
-Board.cmx : Board.cmi
-Player.cmo : Player.cmi
-Player.cmx : Player.cmi
-TicTacToe.cmo : Board.cmi TicTacToe.cmi
-TicTacToe.cmx : Board.cmx TicTacToe.cmi
