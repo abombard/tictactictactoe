@@ -4,6 +4,10 @@ let create_list elem size =
         else aux (i+1) (elem :: nl)
     in aux 0 []
 
+(* Error handline *)
+type 'a Option =  Some of 'a
+                | Error of string
+
 (* Player *)
 
 module Player =
@@ -31,17 +35,14 @@ struct
 
     let play t i c =
         match t with
-        | Winner ( _ ) -> print_endline "Error: This board game is over"; t
+        | Winner ( _ ) -> Error "This board game is over"
         | Board ( l ) ->
             let rec aux l nl j =
                 match l with
-                | [] -> Board ( nl )
+                | [] -> Some ( Board ( nl ) )
                 | e :: tail when i = j ->
                         if e <> Player.None
-                        then begin
-                            print_endline "Error: Cell already taken";
-                            aux tail (nl @ [e]) (j+1)
-                        end
+                        then Error "Cell already taken"
                         else aux tail (nl @ [c]) (j+1)
                 | e :: tail -> aux tail (nl @ [e]) (j+1)
             in aux l [] 0
@@ -75,10 +76,7 @@ struct
 
     let play (boards, player) x y =
         if x < 0 || x > 8 || y < 0 || y > 8
-        then begin
-            print_endline "Invalid input";
-            (boards, player)
-        end
+        then Error "Invalid input";
         else begin
             let nextPlayer () =
                 match player with
@@ -88,8 +86,12 @@ struct
             in
             let rec aux l nl i =
                 match l with
-                | [] -> ( nl, nextPlayer () )
-                | board :: tail when i = x -> aux tail (nl @ [Board.play board y player]) (i+1)
+                | [] -> Some ( nl, nextPlayer () )
+                | board :: tail when i = x -> begin
+                    match Board.play board y player with
+                    | Some ( newBoard ) -> aux tail (nl @ [newBoard]) (i+1)
+                    | _ as error -> error
+                end
                 | board :: tail -> aux tail (nl @ [board]) (i+1)
             in aux boards [] 0
         end
