@@ -224,7 +224,7 @@ let toString ( boards, player ) =
 
     let ai (boards, _) =
         let playerAi = Player.X in
-        let playerHuman = Player.O in
+        (* let playerHuman = Player.O in *)
         let rec findFreeCell line =
             let rec aux l =
                 match l with
@@ -372,8 +372,6 @@ let rec getCoordonates game player =
 
 let rec game_loop game names idplayer =
     let (x, y) = getCoordonates game (List.nth names idplayer) in
-    Printf.printf "%s %d %d\n" (List.nth names idplayer) x y;
-	let player = snd game in
     match Game.play game (x-1) (y-1) with
     | Some ( newGame ) -> begin
 		print_endline (Game.toString newGame);
