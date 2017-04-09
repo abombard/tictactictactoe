@@ -48,6 +48,70 @@ struct
                 | e :: tail -> aux tail (nl @ [e]) (j+1)
             in aux l [] 0
 
+	let lineIsComplete board i =
+		let getLine i = match i with
+			| 1 -> [List.nth board 0; List.nth board 1; List.nth board 2]
+			| 2 -> [List.nth board 3; List.nth board 4; List.nth board 5]
+			| 3 -> [List.nth board 6; List.nth board 7; List.nth board 8]
+			| _ -> []
+		in
+		let n = getLine i in
+		if (List.nth n 0 <> Player.None && List.nth n 0 = List.nth n 1 && List.nth n 1 = List.nth n 2)
+		then
+			Winner (List.nth n 0)
+		else
+			Board (board)
+
+	let columnIsComplete board i =
+		let n = match i with
+		| 1 -> [List.nth board 0; List.nth board 3; List.nth board 6]
+		| 2 -> [List.nth board 1; List.nth board 4; List.nth board 7]
+		| 3 -> [List.nth board 2; List.nth board 5; List.nth board 8]
+		| _ -> []
+		in
+		if (List.nth n 0 <> Player.None && List.nth n 0 = List.nth n 1 && List.nth n 1 = List.nth n 2)
+		then
+			Winner (List.nth n 0)
+		else
+			Board (board)
+
+	let diagonaleIsComplete board i =
+		let n = match i with
+		| 1 -> [List.nth board 0; List.nth board 4; List.nth board 8]
+		| 2 -> [List.nth board 6; List.nth board 4; List.nth board 2]
+		| _ -> []
+		in
+		if (List.nth n 0 <> Player.None && List.nth n 0 = List.nth n 1 && List.nth n 1 = List.nth n 2)
+		then
+			Winner (List.nth n 0)
+		else
+			Board (board)
+
+	let allTestFunc = [lineIsComplete; lineIsComplete; lineIsComplete; columnIsComplete;
+		columnIsComplete; columnIsComplete; diagonaleIsComplete; diagonaleIsComplete]
+
+	let rec checkFull board i =
+		if i > 8 then true
+		else
+			match (List.nth board i) with
+			| Player.None -> false
+			| _ -> checkFull board (i + 1)
+
+	let isFinish board =
+		let rec test board i =
+			if i > 8 then if checkFull board 0 then Some (Winner (Player.None)) else None
+			else
+				let boardres = (List.nth allTestFunc i) board (i mod 3 + 1) in
+				match boardres with
+				| Winner ( p ) -> Some ( Winner p )
+				| Board ( l ) -> test board (i + 1)
+		in test board 0
+
+	let finish board =
+		match isFinish board with
+		| Some (Winner p) -> Winner p
+		| _ -> Board (board)
+
     let toString t =
         match t with
         | Winner ( player ) -> begin
@@ -126,8 +190,28 @@ struct
         (line_nth board6 2) ^ " | " ^ (line_nth board7 2) ^ " | " ^ (line_nth board8 2) ^ "\n" ^
         (line_nth board6 3) ^ " | " ^ (line_nth board7 3) ^ " | " ^ (line_nth board8 3) ^ "\n"
 
-	(* let isFinish (boards, player) =
-		| isFinish (List.nth boards 0) = isFinish (List.nth boards 1)  *)
+		let isFinish (boards, _) =
+			let rec test boards res =
+				match boards with
+				| [] -> begin
+					let rec aux i =
+						if i > 8 then None
+						else begin
+							let boardres = (List.nth Board.allTestFunc i) res (i mod 3 + 1) in
+							match boardres with
+							| Board.Winner ( p ) -> Some ( p )
+							| Board.Board ( l ) -> aux (i + 1)
+						end
+					in aux 0
+				end
+				| Board.Board ( board ) :: tail -> begin
+					match Board.isFinish board with
+					| Some ( Board.Winner ( p ) ) -> test tail (res @ [p])
+					| _                           -> test tail (res @ [Player.None])
+				end
+				| Board.Winner ( p ) :: tail -> test tail (res @ [p])
+ 			in test boards []
+
 
 end
 
@@ -165,6 +249,13 @@ let split_whitespaces s =
     in aux (list_from_string s) "" [] *)
 (* *)
 
+let rec askEndGame names =
+	print_endline "End, do you want ro restart ? (y/n)";
+	match read_line () with
+	| "y"	-> 0
+	| "n"	-> 1
+	| _ 	-> print_endline "Error, invalid input."; askEndGame names
+
 let rec game_loop game names idplayer =
     askMove names idplayer;
 	(* let inputs = split_whitespaces (String.trim (read_line ())) in *)
@@ -176,11 +267,17 @@ let rec game_loop game names idplayer =
 			let player = snd game in
 		    let game = Game.play game (x-1) (y-1) in
 		    print_endline (Game.toString game);
-			if player = snd game
-			then
-            	game_loop game names idplayer
-			else
-            	game_loop game names ((idplayer + 1) mod 2)
+			match Game.isFinish game with
+			| Some ( p )	-> begin
+				match (askEndGame names) with
+					| 0 -> game_loop (Game.newGame ()) names 0
+					| _ -> print_endline "Closing."
+			end
+			| _				-> begin
+				match snd game with
+				| x when x = player -> game_loop game names idplayer
+				| _ 				-> game_loop game names ((idplayer + 1) mod 2)
+			end
 		with
 			int_of_string ->
 			    print_endline "Incorrect format. (2 numbers separate by a space required)";
