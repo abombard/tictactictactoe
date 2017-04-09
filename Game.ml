@@ -6,7 +6,7 @@ in aux 0 []
 
 (* Error handline *)
 type 'a option =  Some of 'a
-            | Error of string
+                | Error of string
 
 (* Player *)
 
@@ -20,6 +20,12 @@ let toString t =
     | O -> "O"
     | X -> "X"
     | None -> "_"
+
+let toInt t =
+    match t with
+    | None -> 0
+    | O -> 1
+    | X -> 2
 
 end
 
@@ -57,10 +63,8 @@ let lineIsComplete board i =
     in
     let n = getLine i in
     if (List.nth n 0 <> Player.None && List.nth n 0 = List.nth n 1 && List.nth n 1 = List.nth n 2)
-    then
-        Winner (List.nth n 0)
-    else
-        Board (board)
+    then Winner (List.nth n 0)
+    else Board (board)
 
 let columnIsComplete board i =
     let n = match i with
@@ -70,10 +74,8 @@ let columnIsComplete board i =
     | _ -> []
     in
     if (List.nth n 0 <> Player.None && List.nth n 0 = List.nth n 1 && List.nth n 1 = List.nth n 2)
-    then
-        Winner (List.nth n 0)
-    else
-        Board (board)
+    then Winner (List.nth n 0)
+    else Board (board)
 
 let diagonaleIsComplete board i =
     let n = match i with
@@ -82,10 +84,8 @@ let diagonaleIsComplete board i =
     | _ -> []
     in
     if (List.nth n 0 <> Player.None && List.nth n 0 = List.nth n 1 && List.nth n 1 = List.nth n 2)
-    then
-        Winner (List.nth n 0)
-    else
-        Board (board)
+    then Winner (List.nth n 0)
+    else Board (board)
 
 let allTestFunc = [lineIsComplete; lineIsComplete; lineIsComplete; columnIsComplete;
     columnIsComplete; columnIsComplete; diagonaleIsComplete; diagonaleIsComplete]
@@ -97,13 +97,12 @@ let rec checkFull board i =
         | Player.None -> false
         | _ -> checkFull board (i + 1)
 
-let isFinish board =
+let isFinish (board : Player.t list) =
     let rec test board i =
         if i >= List.length allTestFunc then begin
-			(* if checkFull board 0
-			then Some (Winner (Player.None))
-			else None *)
-			None
+			if not (checkFull board 0)
+			then None
+			else Some Player.None
 		end
         else
             let boardres = (List.nth allTestFunc i) board (i mod 3 + 1) in
@@ -112,12 +111,13 @@ let isFinish board =
             | Board ( l ) -> test board (i + 1)
     in test board 0
 
-let finish board =
+let finish (board : t) (player : Player.t) =
 	match board with
 	| Board l -> begin
     	match isFinish l with
-    	| Some ( p ) -> Winner p
-    	| _ 		 -> board
+    	| Some p when p = Player.None -> Winner player
+        | Some p                      -> Winner p
+    	| None 		                  -> board
 	end
 	| _      -> board
 
@@ -149,7 +149,7 @@ type t = Board.t list * Player.t
 let newGame () =
     (create_list (Board.newBoard ()) 9, Player.O)
 
-let play (boards, player) x y =
+let play ((boards : Board.t list), (player : Player.t)) x y =
     if x < 0 || x > 8 || y < 0 || y > 8
     then Error "Illegal move."
     else begin
@@ -159,12 +159,12 @@ let play (boards, player) x y =
             | Player.X -> Player.O
             | Player.None -> Player.None
         in
-        let rec aux l nl i =
+        let rec aux (l : Board.t list) (nl : Board.t list) i =
             match l with
             | [] -> Some ( nl, nextPlayer () )
             | board :: tail when i = x -> begin
                 match Board.play board y player with
-                | Some ( newBoard ) -> aux tail (nl @ [Board.finish newBoard]) (i+1)
+                | Some ( newBoard ) -> aux tail (nl @ [Board.finish newBoard player]) (i+1)
                 | Error ( message ) -> Error message
             end
             | board :: tail -> aux tail (nl @ [board]) (i+1)
@@ -217,11 +217,90 @@ let toString ( boards, player ) =
             | Board.Board ( board ) :: tail -> begin
                 match Board.isFinish board with
                 | Some ( p ) -> test tail (res @ [p])
-                | _                           -> test tail (res @ [Player.None])
+                | _          -> test tail (res @ [Player.None])
             end
             | Board.Winner ( p ) :: tail -> test tail (res @ [p])
         in test boards []
 
+    let ai (boards, _) =
+        let playerAi = Player.X in
+        let playerHuman = Player.O in
+        let rec findFreeCell line =
+            let rec aux l =
+                match l with
+                | ( p, x, y ) :: tail when p = Player.None -> (x, y)
+                | cell :: tail                             -> findFreeCell tail
+                | []                                       -> (-1, -1)
+            in aux line
+        in
+        let estimateLineValue line player =
+            let rec aux l v =
+                match l with
+                | []                                       -> v
+                | ( p, _, _ ) :: tail when p = Player.None -> aux tail v
+                | ( p, _, _ ) :: tail when p = player      -> aux tail (v + 1)
+                | ( p, _, _ ) :: tail                      -> aux tail (v - 5)
+            in aux line 0
+        in
+        let searchCell line player =
+            match estimateLineValue line player with
+            | x when x <> 2 && x <> -10 -> None
+            | _                         -> Some ( findFreeCell line )
+        in
+        let allLinesY = [
+            (0, 1, 2);
+            (3, 4, 5);
+            (6, 7, 8);
+            (0, 3, 6);
+            (1, 4, 7);
+            (2, 5, 8);
+            (0, 4, 8);
+            (2, 4, 6);
+        ]
+        in
+        let getNextMove boards =
+            let rec boards_iter1 boards x =
+                match boards with
+                | Board.Winner p :: tail  -> boards_iter1 tail (x+1)
+                | Board.Board board :: tail -> begin
+                    let rec lines_iter lines =
+                        match lines with
+                        | [] -> None
+                        | ( i, j, k ) :: tail -> begin
+                            let l = [(List.nth board i, x, i ); ( List.nth board j, x, j); ( List.nth board k, x, k )] in
+                            match searchCell l playerAi with
+                            | Some (x, y) -> Some (x, y)
+                            | None        -> lines_iter tail
+                        end
+                    in
+                    match lines_iter allLinesY with
+                    | Some (x, y) -> (x, y)
+                    | None        -> boards_iter1 tail (x+1)
+                end
+                | [] -> (-1, -1)
+            in
+            match boards_iter1 boards 1 with
+            | (-1, -1) -> begin
+                let rec boards_iter2 boards x =
+                    match boards with
+                    | []                        -> (-1, -1)
+                    | Board.Winner p :: tail    -> print_endline "Winner !"; boards_iter2 tail (x+1)
+                    | Board.Board board :: tail -> begin
+                        print_endline "Board !";
+                        let rec board_iter cells y =
+                            match cells with
+                            | []                                   -> None
+                            | cell :: tail when cell = Player.None -> Some (x, y)
+                            | cell :: tail                         -> board_iter tail (y+1)
+                        in
+                        match board_iter board 0 with
+                        | Some (x, y) -> (x, y+1)
+                        | None        -> boards_iter2 tail (x+1)
+                    end
+                in boards_iter2 boards 1
+            end
+            | (x, y) -> (x, y+1)
+       in getNextMove boards
 
 end
 
@@ -243,8 +322,8 @@ let rec askNbPlayer () =
 		| "2"	-> print_endline "2 player selected."; 2
 		| _		-> print_endline "Invalid input."; askNbPlayer ()
 
-let askMove names idplayer =
-print_endline (List.nth names idplayer ^ "'s turn to play.")
+let askMove player =
+    print_endline (player ^ "'s turn to play.")
 
 (* //TEMP use String.split_on_char *)
 (* let list_from_string s =
@@ -266,49 +345,50 @@ in aux (list_from_string s) "" [] *)
 (* *)
 
 let rec askEndGame names =
-print_endline "End, do you want ro restart ? (y/n)";
-match read_line () with
-| "y"	-> 0
-| "n"	-> 1
-| _ 	-> print_endline "Error, invalid input."; askEndGame names
+    print_endline "End, do you want ro restart ? (y/n)";
+    match read_line () with
+    | "y"	-> 0
+    | "n"	-> 1
+    | _ 	-> print_endline "Error, invalid input."; askEndGame names
+
+let rec getCoordonates game player =
+    askMove player;
+    (* let inputs = split_whitespaces (String.trim (read_line ())) in *)
+    match player with
+    | "AI" -> Game.ai game
+    | _    -> begin
+        try
+            let inputs = String.split_on_char ' ' (String.trim (read_line ())) in
+            match inputs with
+            | x :: y :: [] -> (int_of_string x, int_of_string y)
+            | _            ->
+		        print_endline "Error: Incorrect format. Usage: x y";
+                getCoordonates game player
+	    with
+		    int_of_string ->
+		        print_endline "Error: Incorrect format. Usage: x y";
+                getCoordonates game player
+    end
 
 let rec game_loop game names idplayer =
-askMove names idplayer;
-(* let inputs = split_whitespaces (String.trim (read_line ())) in *)
-let inputs = String.split_on_char ' ' (String.trim (read_line ())) in
-match inputs with
-| x :: y :: [] -> begin
-    (* try *)
-         let x, y = int_of_string x, int_of_string y in
-			let player = snd game in
-            match Game.play game (x-1) (y-1) with
-            | Some ( newGame ) -> begin
-                    let game = newGame in
-		            print_endline (Game.toString game);
-                    match Game.isFinish game with
-                    | Some ( p )	-> begin
-                        match (askEndGame names) with
-                            | 0 -> game_loop (Game.newGame ()) names 0
-                            | _ -> print_endline "Closing."
-                    end
-                    | _				-> begin
-                        match snd game with
-                        | x when x = player -> game_loop game names idplayer
-                        | _ 				-> game_loop game names ((idplayer + 1) mod 2)
-                    end
-			end
-            | Error ( message ) ->
-                    print_string "Error: ";
-                    print_endline message;
-            	    game_loop game names idplayer
-	(* with
-		int_of_string ->
-		    print_endline "Error: Incorrect format. Usage: x y toto";
-	        game_loop game names idplayer *)
-    end
-| _ ->
-    print_endline "Error: Incorrect format. Usage: x y titi";
-    game_loop game names idplayer
+    let (x, y) = getCoordonates game (List.nth names idplayer) in
+    Printf.printf "%s %d %d\n" (List.nth names idplayer) x y;
+	let player = snd game in
+    match Game.play game (x-1) (y-1) with
+    | Some ( newGame ) -> begin
+		print_endline (Game.toString newGame);
+        match Game.isFinish newGame with
+        | Some ( p )	-> begin
+            match (askEndGame names) with
+                | 0 -> game_loop (Game.newGame ()) names 0
+                | _ -> print_endline "Closing."
+        end
+        | _ 		    -> game_loop newGame names ((idplayer + 1) mod 2)
+	end
+    | Error ( message ) ->
+            print_string "Error: ";
+            print_endline message;
+            game_loop game names idplayer
 
 let main () =
     let game = Game.newGame () in
