@@ -44,6 +44,7 @@ struct
                         if e <> Player.None
                         then Error "Cell already taken"
                         else aux tail (nl @ [c]) (j+1)
+						(* Check if board is over au dessus*)
                 | e :: tail -> aux tail (nl @ [e]) (j+1)
             in aux l [] 0
 
@@ -72,7 +73,8 @@ struct
 
     type t = Board.t list * Player.t
 
-    let newGame () = (create_list (Board.newBoard ()) 9, Player.O)
+    let newGame () =
+		(create_list (Board.newBoard ()) 9, Player.O)
 
     let play (boards, player) x y =
         if x < 0 || x > 8 || y < 0 || y > 8
@@ -125,6 +127,9 @@ struct
         (line_nth board6 2) ^ " | " ^ (line_nth board7 2) ^ " | " ^ (line_nth board8 2) ^ "\n" ^
         (line_nth board6 3) ^ " | " ^ (line_nth board7 3) ^ " | " ^ (line_nth board8 3) ^ "\n"
 
+	(* let isFinish (boards, player) =
+		| isFinish (List.nth boards 0) = isFinish (List.nth boards 1)  *)
+
 end
 
 (* main *)
@@ -139,12 +144,11 @@ let askName except =
 	in getN except
 
 (* //TEMP not working *)
-let turn = 0
-let askMove names =
-	print_endline (List.nth names turn ^ "'s turn to play.")
+let askMove names idplayer =
+	print_endline (List.nth names idplayer ^ "'s turn to play.")
 
 (* //TEMP use String.split_on_char *)
-let list_from_string s =
+(* let list_from_string s =
     let rec aux i l =
         if i < 0 then l
         else aux (i-1) (s.[i] :: l) in
@@ -159,34 +163,39 @@ let split_whitespaces s =
                 then aux tail "" (l @ [w])
                 else aux tail "" l
         | c :: tail -> aux tail (w ^ String.make 1 c) l
-    in aux (list_from_string s) "" []
+    in aux (list_from_string s) "" [] *)
 (* *)
 
-let rec game_loop game names =
-    askMove names;
-	let inputs = split_whitespaces (String.trim (read_line ())) in
+let rec game_loop game names idplayer =
+    askMove names idplayer;
+	(* let inputs = split_whitespaces (String.trim (read_line ())) in *)
+	let inputs = String.split_on_char ' ' (String.trim (read_line ())) in
 	match inputs with
 	| x :: y :: [] -> begin
 		try
 		    let x, y = int_of_string x, int_of_string y in
+			let player = snd game in
 		    let game = Game.play game (x-1) (y-1) in
 		    print_endline (Game.toString game);
-            game_loop game names
+			if player = snd game
+			then
+            	game_loop game names idplayer
+			else
+            	game_loop game names ((idplayer + 1) mod 2)
 		with
 			int_of_string ->
 			    print_endline "Incorrect format. (2 numbers separate by a space required)";
-	            game_loop game names
+	            game_loop game names idplayer
 	    end
     | _ ->
         print_endline "Usage:x y";
-        game_loop game names
+        game_loop game names idplayer
 
 let main () =
     let game = Game.newGame () in
     let name1 = askName "" in
     let name2 = askName name1 in
     Printf.printf "%s vs %s\n" name1 name2;
-    game_loop game [name1; name2]
+    game_loop game [name1; name2] 0
 
 let () = main ()
-
