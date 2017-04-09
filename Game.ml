@@ -5,7 +5,7 @@ let create_list elem size =
     in aux 0 []
 
 (* Error handline *)
-type 'a Option =  Some of 'a
+type 'a option =  Some of 'a
                 | Error of string
 
 (* Player *)
@@ -35,14 +35,14 @@ struct
 
     let play t i c =
         match t with
-        | Winner ( _ ) -> Error "This board game is over"
+        | Winner ( _ ) -> Error "Illegal move."
         | Board ( l ) ->
             let rec aux l nl j =
                 match l with
                 | [] -> Some ( Board ( nl ) )
                 | e :: tail when i = j ->
                         if e <> Player.None
-                        then Error "Cell already taken"
+                        then Error "Illegal move."
                         else aux tail (nl @ [c]) (j+1)
 						(* Check if board is over au dessus*)
                 | e :: tail -> aux tail (nl @ [e]) (j+1)
@@ -78,7 +78,7 @@ struct
 
     let play (boards, player) x y =
         if x < 0 || x > 8 || y < 0 || y > 8
-        then Error "Invalid input";
+        then Error "Illegal move."
         else begin
             let nextPlayer () =
                 match player with
@@ -92,7 +92,7 @@ struct
                 | board :: tail when i = x -> begin
                     match Board.play board y player with
                     | Some ( newBoard ) -> aux tail (nl @ [newBoard]) (i+1)
-                    | _ as error -> error
+                    | Error ( message ) -> Error message
                 end
                 | board :: tail -> aux tail (nl @ [board]) (i+1)
             in aux boards [] 0
@@ -138,12 +138,11 @@ let askName except =
 	print_endline "Player Name ?";
 	let rec getN name =
 		match read_line () with
-			| ""					-> print_endline "Error, empty name."; getN name
-			| tmp when tmp = name	-> print_endline "Error, name already taken."; getN name
+			| ""					-> print_endline "Error: empty name."; getN name
+			| tmp when tmp = name	-> print_endline "Error: name already taken."; getN name
 			| name  				-> name
 	in getN except
 
-(* //TEMP not working *)
 let askMove names idplayer =
 	print_endline (List.nth names idplayer ^ "'s turn to play.")
 
@@ -175,20 +174,22 @@ let rec game_loop game names idplayer =
 		try
 		    let x, y = int_of_string x, int_of_string y in
 			let player = snd game in
-		    let game = Game.play game (x-1) (y-1) in
-		    print_endline (Game.toString game);
-			if player = snd game
-			then
-            	game_loop game names idplayer
-			else
-            	game_loop game names ((idplayer + 1) mod 2)
+            match Game.play game (x-1) (y-1) with
+            | Some ( newGame ) ->
+                    let game = newGame in
+		            print_endline (Game.toString game);
+            	    game_loop game names ((idplayer + 1) mod 2)
+            | Error ( message ) ->
+                    print_string "Error: ";
+                    print_endline message;
+            	    game_loop game names idplayer
 		with
 			int_of_string ->
-			    print_endline "Incorrect format. (2 numbers separate by a space required)";
+			    print_endline "Error: Incorrect format. Usage: x y";
 	            game_loop game names idplayer
 	    end
     | _ ->
-        print_endline "Usage:x y";
+        print_endline "Error: Incorrect format. Usage: x y";
         game_loop game names idplayer
 
 let main () =
