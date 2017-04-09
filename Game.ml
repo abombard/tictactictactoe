@@ -173,7 +173,6 @@ let rec game_loop game names idplayer =
 	| x :: y :: [] -> begin
 		try
 		    let x, y = int_of_string x, int_of_string y in
-			let player = snd game in
             match Game.play game (x-1) (y-1) with
             | Some ( newGame ) ->
                     let game = newGame in
@@ -196,7 +195,9 @@ let main () =
     let game = Game.newGame () in
     let name1 = askName "" in
     let name2 = askName name1 in
-    Printf.printf "%s vs %s\n" name1 name2;
+    print_string name1;
+    print_string " vs ";
+    print_endline name2;
     game_loop game [name1; name2] 0
 
 let () = main ()
